@@ -178,6 +178,8 @@ function render(){
     if(sortKey==="ratio"){va=a.ratio??1;vb=b.ratio??1;}
     if(sortKey==="speed"){va=a.speed??-1;vb=b.speed??-1;}
     if(sortKey==="ctx"){va=a.ctx;vb=b.ctx;}
+    // 智力/編碼用強度權重排序（S>A>B），不可用字母序（會變成 S>B>A）
+    if(sortKey==="code"||sortKey==="intel"){const rank={S:3,A:2,B:1};va=rank[a[sortKey]];vb=rank[b[sortKey]];}
     if(typeof va==="string") return va.localeCompare(vb)*sortDir;
     return (va-vb)*sortDir;
   });
