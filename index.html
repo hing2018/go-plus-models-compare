@@ -159,7 +159,7 @@ function renderCards(){
   $("#cards").innerHTML = `
     <div class="card g"><div class="label">最便宜（真正成本/1M）</div><div class="val">$${fmt(min.c)}</div><div class="note">${min.name}</div></div>
     <div class="card g"><div class="label">唯一折扣倍率</div><div class="val">${(1-disc.ratio)*100}% off</div><div class="note">${disc.name} · 倍率 ${disc.ratio}x</div></div>
-    <div class="card b"><div class="label">最高額度倍數 🎁</div><div class="val">${calc(bestMult).mult.toFixed(1)}x</div><div class="note">${bestMult.name} · $${bestMult.planFee??40} → $${bestMult.limit}</div></div>
+    <div class="card b"><div class="label">最高額度倍數</div><div class="val">${calc(bestMult).mult.toFixed(1)}x</div><div class="note">${bestMult.name} · $${bestMult.planFee??40} → $${bestMult.limit}</div></div>
     <div class="card b"><div class="label">最高月限額</div><div class="val">$${maxL.limit}</div><div class="note">${maxL.name}</div></div>`;
 }
 
