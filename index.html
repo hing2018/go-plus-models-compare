@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
   <h1>OpenCode Go Plus 模型對比儀表板</h1>
-  <div class="sub">資料日期 2026-11-23 ｜ 月費 $40 ｜ 資料來源：官方 models API + 本機實測 allowance ｜ 智力/編碼/速度為定性判斷，非官方 benchmark</div>
+  <div class="sub">資料日期 2026-11-26 ｜ 預設月費 $40（Go Plus），6倍券特別版為 $10（Go）｜ 資料來源：官方 models API + 本機實測 allowance ｜ 智力/編碼為定性判斷，速度為 11/23 實測</div>
 
   <div class="cards" id="cards"></div>
 
@@ -104,7 +104,10 @@
 // ratio = 實測 allowance 倍率；null = 未實測（真正成本以 1.0 估算並標註）
 // speed = 實測 streaming 輸出速度 t/s（200 output tokens，2026-11-23 本機實測）；null=未實測
 // ctx = 官方 models API 的 context window
+// planFee = 方案月費（預設 $40 = Go Plus；特別版 $10 = Go「6 倍券」）
+// 資料更新：2026-11-26 Kimi K3.1 Pro 額度提高 + 倍率降為 2.0x
 const DATA = [
+  {name:"Kimi K3.1 Pro 6倍券", limit:60,  price:2.0,   ratio:2.0,   planFee:10, ctx:1048576, code:"S", intel:"S", speed:57,  note:"🎁 Go $10 方案 · $60 面值 = 6倍券 · 11/26 新優惠"},
   {name:"GLM-5.3",            limit:400, price:1.4,   ratio:0.6,   ctx:1000000, code:"S", intel:"S", speed:120, note:"featured · 唯一折扣 · 旗艦"},
   {name:"Hy3",                limit:240, price:0.14,  ratio:1.0,   ctx:256000,  code:"A", intel:"A", speed:41,  note:"CP 值之王 · 僅文字 256k"},
   {name:"Hy4",                limit:240, price:0.834, ratio:1.0,   ctx:1048576, code:"A", intel:"A", speed:71,  note:"多模態 · Agent/複雜任務"},
@@ -121,7 +124,7 @@ const DATA = [
   {name:"Hy4 preview",        limit:120, price:0.834, ratio:2.0,   ctx:1024000, code:"A", intel:"A", speed:28,  note:"Agent / 複雜任務"},
   {name:"Qwen3.8 Flash",      limit:90,  price:0.15,  ratio:2.667, ctx:1000000, code:"B", intel:"B", speed:64,  note:"featured · 視覺推理"},
   {name:"MiniMax M3.1 Flash", limit:80,  price:0.15,  ratio:3.0,   ctx:1000000, code:"A", intel:"A", speed:134, note:"frontier · thinking max"},
-  {name:"Kimi K3.1 Pro",      limit:60,  price:2.0,   ratio:4.0,   ctx:1048576, code:"S", intel:"S", speed:57,  note:"featured · 1M/1M · always-on"},
+  {name:"Kimi K3.1 Pro",      limit:120, price:2.0,   ratio:2.0,   ctx:1048576, code:"S", intel:"S", speed:57,  note:"featured · 1M/1M · 11/26 額度翻倍+倍率減半"},
   {name:"Kimi K3",            limit:60,  price:3.0,   ratio:4.0,   ctx:1048576, code:"S", intel:"S", speed:47,  note:"1M/1M · 單價最貴"},
   {name:"Qwen3.8 Max",        limit:60,  price:2.0,   ratio:4.0,   ctx:1000000, code:"S", intel:"S", speed:36,  note:"2.4 兆參數旗艦"},
   {name:"Grok 4.7",           limit:60,  price:2.0,   ratio:4.0,   ctx:500000,  code:"S", intel:"S", speed:64,  note:"frontier · xhigh reasoning"},
@@ -136,10 +139,11 @@ const DATA = [
 
 const calc = d => {
   const r = d.ratio ?? 1;
+  const fee = d.planFee ?? 40;              // 方案月費：預設 $40，特別版 $10
   return {
-    buy: d.limit / (d.price * r),           // M tokens actually buyable for $40 (含倍率)
-    cost: 40 * d.price * r / d.limit,       // real $ per 1M input (含倍率)
-    mult: d.limit / 40
+    buy: d.limit / (d.price * r),           // M tokens actually buyable (含倍率)
+    cost: fee * d.price * r / d.limit,      // real $ per 1M input (含倍率)
+    mult: d.limit / fee                     // 額度倍數 = 面值 ÷ 月費
   };
 };
 
@@ -151,11 +155,12 @@ function renderCards(){
   const min = DATA.map(d=>({...d,c:calc(d).cost})).sort((a,b)=>a.c-b.c)[0];
   const disc = DATA.filter(d=>d.ratio!==null && d.ratio<1).sort((a,b)=>a.ratio-b.ratio)[0];
   const maxL = DATA.slice().sort((a,b)=>b.limit-a.limit)[0];
+  const bestMult = DATA.slice().sort((a,b)=>calc(b).mult-calc(a).mult)[0];
   $("#cards").innerHTML = `
     <div class="card g"><div class="label">最便宜（真正成本/1M）</div><div class="val">$${fmt(min.c)}</div><div class="note">${min.name}</div></div>
     <div class="card g"><div class="label">唯一折扣倍率</div><div class="val">${(1-disc.ratio)*100}% off</div><div class="note">${disc.name} · 倍率 ${disc.ratio}x</div></div>
-    <div class="card b"><div class="label">最高月限額</div><div class="val">$${maxL.limit}</div><div class="note">${maxL.name} · ${maxL.limit/40}x</div></div>
-    <div class="card r"><div class="label">最貴（真正成本/1M）</div><div class="val">$${fmt(Math.max(...DATA.map(d=>calc(d).cost)))}</div><div class="note">Gemini 4 Argon · 2.0x 加價</div></div>`;
+    <div class="card b"><div class="label">最高額度倍數 🎁</div><div class="val">${calc(bestMult).mult.toFixed(1)}x</div><div class="note">${bestMult.name} · $${bestMult.planFee??40} → $${bestMult.limit}</div></div>
+    <div class="card b"><div class="label">最高月限額</div><div class="val">$${maxL.limit}</div><div class="note">${maxL.name}</div></div>`;
 }
 
 function render(){
@@ -228,8 +233,9 @@ document.querySelectorAll("th").forEach(th=>{
 ["q","fIntel","fCode","fRatio","hideUntested"].forEach(id=>$( "#"+id ).addEventListener("input",render));
 
 $("#foot").innerHTML = `
-  <b>公式</b>：$40 實際可買 = 月限額 ÷ (input 單價 × 實測倍率) ｜ 真正成本/1M = $40 × input 單價 × 實測倍率 ÷ 月限額 ｜ 額度倍數 = 月限額 ÷ $40。兩欄皆含倍率，口徑一致。<br>
-  <b>倍率分布</b>：GLM-5.3 唯一 0.6x（40% off）；1.0x：Hy3/Hy4/LongCat-2.5；1.2x：DeepSeek V4.1 Flash；1.33x：GLM-5.3-Flash/MiniMax-M3/Qwen3.7 Plus/Kimi K2.7 Code；2.0x：Gemini 4 Argon/Hy4 preview/MiMo-V2.6-Flash；2.67x：Qwen3.8 Flash；3.0x：MiniMax M3.1 Flash；<b>4.0x：多數旗艦</b>（Kimi K3 系列、Qwen Max、Grok、GPT Luna、Claude Haiku、DeepSeek V4 Pro 等）。<br>
+  <b>公式</b>：實際可買 = 月限額 ÷ (input 單價 × 實測倍率) ｜ 真正成本/1M = <b>方案月費</b> × input 單價 × 實測倍率 ÷ 月限額 ｜ 額度倍數 = 月限額 ÷ 方案月費。兩欄皆含倍率，口徑一致。<br>
+  <b>🎁 6 倍券特別版</b>：11/26 官方將 Go（$10/月）的 Kimi K3.1 Pro 月限額從 $15 提高到 <b>$60</b>，等於花 $10 買到 $60 面值 = <b>6 倍券</b>；同時扣款倍率從 4.0x 降為 <b>2.0x</b>（雙重優惠）。Go Plus 版亦從 $60 → $120、4.0x → 2.0x。真正成本/1M = $10×$2×2÷$60 = <b>$0.667</b>，比 Go Plus 版（$1.333）便宜一半。<br>
+  <b>倍率分布（11/26 實測）</b>：GLM-5.3 唯一 0.6x（40% off）；1.0x：Hy3/Hy4/LongCat-2.5；1.2x：DeepSeek V4.1 Flash；1.33x：GLM-5.3-Flash/MiniMax-M3/Qwen3.7 Plus/Kimi K2.7 Code；2.0x：Gemini 4 Argon/Hy4 preview/MiMo-V2.6-Flash/<b>Kimi K3.1 Pro（新降）</b>；2.67x：Qwen3.8 Flash；3.0x：MiniMax M3.1 Flash；<b>4.0x：多數旗艦</b>（Kimi K3、Qwen Max、Grok、GPT Luna、Claude Haiku、DeepSeek V4 Pro 等）。<br>
   <b>資料來源</b>：<code>opencode.ai/inference/go/v1/models</code>（2026-11-23）+ 本機實測 <code>usage.opencode.{list_cost, allowance}</code>（billing_source = go-plus）<br>
   <b>速度實測</b>：2026-11-23 本機 streaming，200 output tokens，量測<b>純輸出 t/s</b>（已忽略首字延遲；所有模型 TTFT 均 &lt;10s，最長 Gemini 4 Argon 5.5s，故不列入比較）。共 24 個模型有數據。最快 GPT-5.6 Luna 227、GPT-6 Luna 174、MiniMax M3.1 Flash 134；最慢 MiniMax-M3 17、Hy4 preview 28、MiMo-V2.6-Flash 40。GLM-5.3 實測 113–128 t/s —— 已推翻先前的定性推測。<br>
   <b>未能測速</b>：Muse Spark 1.2/1.3（403 區域限制）、Claude Haiku 5.5（delta 格式特殊），顯示「未實測」。<br>
